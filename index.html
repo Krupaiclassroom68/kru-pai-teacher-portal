@@ -65,7 +65,7 @@ if (configured) {
       } else if(response.status===401) {
         showStatus('ยังไม่ผ่านการยืนยันตัวตน: '+(result?.error||'HTTP 401'),true);
       } else if(response.status===403) {
-        showStatus('บัญชีนี้ยังไม่ได้รับสิทธิ์ครู: '+(result?.error||'HTTP 403'),true);
+        showStatus('ทดสอบป้องกันการเข้าถึงห้องที่ไม่มีสิทธิ์: '+(result?.error||'HTTP 403'),true);
       } else {
         showStatus('ผลตรวจ API: HTTP '+response.status+' — '+(result?.error||'ผลลัพธ์ไม่ตรงกับที่คาดไว้'),true);
       }
