@@ -12,7 +12,7 @@
 <p class="muted">พื้นที่เข้าสู่ระบบสำหรับครู เพื่อเตรียมเชื่อมระบบตรวจผลงานนักเรียน</p>
 <div id="setup" class="note" hidden>หน้านี้ยังไม่ได้ตั้งค่าเชื่อมต่อ Supabase กรุณาเพิ่ม Project URL และ Publishable key ในไฟล์ก่อนใช้งาน</div>
 <section id="loggedOut"><form id="loginForm"><label for="email">อีเมลของครู</label><input id="email" type="email" autocomplete="email" placeholder="teacher@example.com" required><button id="sendBtn" type="submit">✉️ ส่งลิงก์เข้าสู่ระบบ</button></form><p class="note">เปิดอีเมลบนอุปกรณ์เดียวกัน แล้วกด Magic Link เพื่อกลับมาที่หน้านี้ ลิงก์ใช้ได้ครั้งเดียวและมีเวลาหมดอายุ</p></section>
-<section id="loggedIn" hidden><p class="success">✓ เข้าสู่ระบบ Supabase Auth แล้ว</p><p id="identity" class="muted"></p><p class="note">ยังไม่ได้เปิดการดูข้อมูลนักเรียน ต้องตรวจสิทธิ์ครูและสิทธิ์ประจำห้องเรียนที่ API ก่อน</p><button id="signOut" class="secondary">ออกจากระบบ</button></section>
+<section id="loggedIn" hidden><p class="success">✓ เข้าสู่ระบบ Supabase Auth แล้ว</p><p id="identity" class="muted"></p><p class="note">ทดสอบสิทธิ์ครูเท่านั้น ยังไม่เปิดดูข้อมูลนักเรียนหรือรอยทด</p><button id="checkTeacher" type="button">🛡️ ตรวจสอบสิทธิ์ครู</button><button id="signOut" class="secondary">ออกจากระบบ</button></section>
 <p id="status" class="status" role="status" aria-live="polite"></p>
 <footer>Kru Pai Classroom · Teacher Portal Pilot</footer>
 </main>
@@ -21,6 +21,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // Public browser configuration only. NEVER paste secret/service_role keys here.
 const SUPABASE_URL = 'https://rwlteqfhppflyfobactj.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_On4To38Va45OjxrsCVZ38Q_Vr-F98Qu';
+const REVIEW_ENDPOINT = SUPABASE_URL + '/functions/v1/kru-pai-review-api';
 const configured = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
 const $ = (id) => document.getElementById(id);
 const showStatus = (message, error=false) => { $('status').textContent = message; $('status').className = 'status ' + (error?'error':'success'); };
@@ -44,6 +45,32 @@ if (configured) {
       showStatus('หากบัญชีนี้ได้รับอนุญาต ระบบจะส่งลิงก์เข้าสู่ระบบไปยังอีเมล');
     } catch(err){showStatus('ส่งลิงก์ไม่สำเร็จ: '+(err?.message||'โปรดลองใหม่'),true);}
     finally{$('sendBtn').disabled=false;}
+  });
+  $('checkTeacher').addEventListener('click', async()=>{
+    const btn=$('checkTeacher'); btn.disabled=true; showStatus('กำลังตรวจสอบสิทธิ์ครู...');
+    try {
+      const {data:{session},error:sessionError}=await supabase.auth.getSession();
+      if(sessionError || !session?.access_token) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+      // Deliberately omit classroom_code: a teacher who passes authentication receives
+      // 400 classroom_code required, without querying or returning any student records.
+      const response=await fetch(REVIEW_ENDPOINT,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({action:'teacher-list'})
+      });
+      let result;
+      try {result=await response.json();} catch {throw new Error('API ตอบกลับไม่ใช่ JSON (HTTP '+response.status+')');}
+      if(response.status===400 && result?.error==='classroom_code required') {
+        showStatus('✓ ผ่านการตรวจสอบตัวตนและรายชื่อครูแล้ว (ยังไม่ได้อ่านข้อมูลนักเรียน)');
+      } else if(response.status===401) {
+        showStatus('ยังไม่ผ่านการยืนยันตัวตน: '+(result?.error||'HTTP 401'),true);
+      } else if(response.status===403) {
+        showStatus('บัญชีนี้ยังไม่ได้รับสิทธิ์ครู: '+(result?.error||'HTTP 403'),true);
+      } else {
+        showStatus('ผลตรวจ API: HTTP '+response.status+' — '+(result?.error||'ผลลัพธ์ไม่ตรงกับที่คาดไว้'),true);
+      }
+    } catch(err) {showStatus('ตรวจสอบไม่ได้: '+(err?.message||'เกิดข้อผิดพลาด'),true);}
+    finally {btn.disabled=false;}
   });
   $('signOut').addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error)showStatus(error.message,true);else{showStatus('ออกจากระบบแล้ว');await render();}});
   supabase.auth.onAuthStateChange(()=>{setTimeout(render,0);});
