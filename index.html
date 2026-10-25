@@ -56,7 +56,7 @@ if (configured) {
       const response=await fetch(REVIEW_ENDPOINT,{
         method:'POST',
         headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token},
-    body: JSON.stringify({action:'teacher-list', classroom_code:prompt('กรอกรหัสห้องเรียนที่ต้องการทดสอบ') ||''})
+    body: JSON.stringify({action:'teacher-check-access', classroom_code:prompt('กรอกรหัสห้องเรียนที่ต้องการทดสอบ') ||''})
       });
       let result;
       try {result=await response.json();} catch {throw new Error('API ตอบกลับไม่ใช่ JSON (HTTP '+response.status+')');}
