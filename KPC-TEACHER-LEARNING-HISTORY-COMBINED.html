@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kru Pai Classroom | Teacher Learning History</title>
+<style>
+:root{font-family:system-ui,'Noto Sans Thai',sans-serif;color:#17324b;background:#edf5ff}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:start center;padding:22px;background:radial-gradient(circle at top left,#d2f7ee,transparent 45%),linear-gradient(145deg,#e7f1ff,#fff0f6)}main{width:min(100%,1080px);background:#fff;border-radius:26px;padding:30px;box-shadow:0 18px 55px #1b477024}h1{margin:0 0 8px;font-size:27px}p{line-height:1.7}.eyebrow{font-weight:800;color:#207ab6;letter-spacing:.04em}.muted{color:#5a7188}label{font-weight:700;display:block;margin:18px 0 8px}input,button{width:100%;border-radius:13px;font:inherit;padding:14px}input{border:2px solid #c7d9eb}button{border:0;background:#166ab6;color:white;font-weight:800;cursor:pointer;margin-top:14px}button:disabled{opacity:.55;cursor:not-allowed}.secondary{background:#e8f2fa;color:#174366}.note{padding:12px;border-radius:12px;background:#f0f7fd;font-size:14px}.status{min-height:24px;font-weight:600;overflow-wrap:anywhere}.error{color:#a32845}.success{color:#137a54}[hidden]{display:none!important}.roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:14px}.student-card{border:1px solid #c7d9eb;border-radius:14px;padding:13px;background:#f8fbff}.student-card strong{display:block;font-size:17px}.roster-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.roster-controls label{flex:1;min-width:150px}.roster-controls button{width:auto;min-width:180px}.roster-count{font-weight:700;color:#17568d}.student-card{width:100%;text-align:left;color:#17324b;cursor:pointer}.student-card:hover,.student-card:focus{outline:2px solid #166ab6;background:#eaf4ff}.student-card[aria-pressed="true"]{border:2px solid #166ab6;background:#eaf4ff}.submission-card{background:#f8fbff;border:1px solid #c7d9eb;border-radius:12px;padding:12px;margin:9px 0}.submission-card summary{cursor:pointer;font-weight:700}.submission-card pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.detail-title{margin:0 0 10px}footer{text-align:center;font-size:12px;color:#71869b;margin-top:20px}
+ .score-history{margin-top:16px}
+.score-summary{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}
+.score-stat{background:#eef6ff;border:1px solid #d2e4f5;border-radius:13px;padding:12px 16px;min-width:125px}
+.score-stat strong{display:block;font-size:23px;color:#135a9d}
+.score-table-wrap{overflow-x:auto}
+.score-table{width:100%;border-collapse:collapse;font-size:14px}
+.score-table th,.score-table td{padding:11px 9px;text-align:left;border-bottom:1px solid #dce8f2}
+.score-table th{background:#f0f7fd;color:#244e70}
+.score-table td{overflow-wrap:anywhere}
+.score-game{font-size:12px;max-width:280px}
+.score-pass{color:#147951;font-weight:700}
+.score-fail{color:#a4384e;font-weight:700}
+</style>
+</head>
+<body><main>
+<div class="eyebrow">✦ Kru Pai Classroom</div><h1>🔐 Teacher Login</h1>
+<p class="muted">พื้นที่เข้าสู่ระบบสำหรับครู สำหรับเปิดระบบตรวจคะแนนและรอยทดทดลอง</p>
+<div id="setup" class="note" hidden>หน้านี้ยังไม่ได้ตั้งค่าเชื่อมต่อ Supabase กรุณาเพิ่ม Project URL และ Publishable key ในไฟล์ก่อนใช้งาน</div>
+<section id="loggedOut"><form id="loginForm"><label for="email">อีเมลของครู</label><input id="email" type="email" autocomplete="email" placeholder="teacher@example.com" required><button id="sendBtn" type="submit">✉️ ส่งลิงก์เข้าสู่ระบบ</button></form><p class="note">เปิดอีเมลบนอุปกรณ์เดียวกัน แล้วกด Magic Link เพื่อกลับมาที่หน้านี้ ลิงก์ใช้ได้ครั้งเดียวและมีเวลาหมดอายุ</p></section>
+<section id="loggedIn" hidden><p class="success">✓ เข้าสู่ระบบ Supabase Auth แล้ว</p><p id="identity" class="muted"></p><p class="note">ตรวจสอบสิทธิ์ครู แล้วเลือกห้องเรียนและนักเรียนเพื่อดูประวัติการเรียน</p><button id="checkTeacher" type="button">🛡️ ตรวจสอบสิทธิ์ครู</button><button id="signOut" class="secondary">ออกจากระบบ</button></section>
+<p id="status" class="status" role="status" aria-live="polite"></p><section id="rosterArea" hidden><h2>👩‍🎓 รายชื่อนักเรียนจาก Classroom</h2><p class="note">อ่านรายชื่อเฉพาะห้องเรียนที่บัญชีครูได้รับอนุญาต ผ่าน Teacher Review API • ไม่แก้ไขข้อมูลต้นฉบับ</p><div class="roster-controls"><label for="classroomCode">รหัสห้องเรียน<input id="classroomCode" value="CL001" maxlength="40" autocomplete="off" placeholder="เช่น CL001"></label><button id="loadRoster" type="button">🔎 โหลดรายชื่อนักเรียน</button></div><p id="rosterStatus" class="status" role="status" aria-live="polite"></p><div id="rosterCount" class="roster-count"></div><div id="rosterList" class="roster-grid"></div><section id="studentReview" hidden style="margin-top:20px;padding:18px;border:1px solid #b9d5ec;border-radius:18px;background:#fff"><h3 id="studentReviewTitle" class="detail-title">ผลงานนักเรียน</h3><p class="note">ข้อมูลจริงจาก Classroom • เลือกรอบคะแนนเพื่อดูรอยทดของรอบนั้นเท่านั้น</p><section class="score-history" aria-label="ประวัติคะแนน">
+<h3>📊 ประวัติคะแนนทุกครั้งที่เล่น</h3>
+<p class="muted">ข้อมูลจาก Classroom จริง • แสดงสูงสุด 100 รอบล่าสุดต่อครั้ง • รวมรอบที่ไม่ผ่านและการเล่นซ้ำ</p>
+<p id="studentScoresStatus" class="status" role="status" aria-live="polite"></p>
+<div id="studentScores"></div><p id="selectedAttemptStatus" class="note">เลือกรอบการเล่นจากตารางคะแนนเพื่อดูรอยทด</p>
+</section>
+<h3>✍️ รอยทดของรอบที่เลือก</h3>
+<p id="studentReviewStatus" class="status" role="status" aria-live="polite"></p><div id="studentSubmissions"></div></section></section><footer>Kru Pai Classroom · Teacher Learning History · READ ONLY</footer>
+</main>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Public browser configuration only. NEVER paste secret/service_role keys here.
+const SUPABASE_URL = 'https://rwlteqfhppflyfobactj.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_On4To38Va45OjxrsCVZ38Q_Vr-F98Qu';
+const REVIEW_ENDPOINT = SUPABASE_URL + '/functions/v1/kru-pai-review-api';
+const configured = SUPABASE_URL.startsWith('https://') && SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
+const $ = (id) => document.getElementById(id);
+const showStatus = (message, error=false) => { $('status').textContent = message; $('status').className = 'status ' + (error?'error':'success'); };
+$('setup').hidden = configured;
+$('sendBtn').disabled = !configured;
+if (configured) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {auth:{detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
+  async function render() {
+    const {data:{session},error} = await supabase.auth.getSession();
+    if(error) showStatus('ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ: '+error.message,true);
+    $('rosterArea').hidden = !session; if(!session){$('rosterList').replaceChildren();$('rosterCount').textContent='';$('rosterStatus').textContent='';}
+    $('loggedIn').hidden = !session;
+    $('loggedOut').hidden = !!session;
+    $('identity').textContent = session ? 'บัญชี: '+(session.user.email || 'ไม่ระบุอีเมล') : '';
+  }
+  $('loginForm').addEventListener('submit',async e=>{
+    e.preventDefault(); $('sendBtn').disabled=true;showStatus('กำลังส่งลิงก์...');
+    try {
+      const email=$('email').value.trim();
+      const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin+window.location.pathname,shouldCreateUser:false}});
+      if(error) throw error;
+      showStatus('หากบัญชีนี้ได้รับอนุญาต ระบบจะส่งลิงก์เข้าสู่ระบบไปยังอีเมล');
+    } catch(err){showStatus('ส่งลิงก์ไม่สำเร็จ: '+(err?.message||'โปรดลองใหม่'),true);}
+    finally{$('sendBtn').disabled=false;}
+  });
+  $('checkTeacher').addEventListener('click', async()=>{
+    const btn=$('checkTeacher'); btn.disabled=true; showStatus('กำลังตรวจสอบสิทธิ์ครู...');
+    try {
+      const {data:{session},error:sessionError}=await supabase.auth.getSession();
+      if(sessionError || !session?.access_token) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+      // Deliberately omit classroom_code: a teacher who passes authentication receives
+      // 400 classroom_code required, without querying or returning any student records.
+      const response=await fetch(REVIEW_ENDPOINT,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({action:'teacher-list'})
+      });
+      let result;
+      try {result=await response.json();} catch {throw new Error('API ตอบกลับไม่ใช่ JSON (HTTP '+response.status+')');}
+      if(response.status===400 && result?.error==='classroom_code required') {
+        showStatus('✓ ผ่านการตรวจสอบตัวตนและรายชื่อครูแล้ว');
+      } else if(response.status===401) {
+        showStatus('ยังไม่ผ่านการยืนยันตัวตน: '+(result?.error||'HTTP 401'),true);
+      } else if(response.status===403) {
+        showStatus('บัญชีนี้ยังไม่ได้รับสิทธิ์ครู: '+(result?.error||'HTTP 403'),true);
+      } else {
+        showStatus('ผลตรวจ API: HTTP '+response.status+' — '+(result?.error||'ผลลัพธ์ไม่ตรงกับที่คาดไว้'),true);
+      }
+    } catch(err) {showStatus('ตรวจสอบไม่ได้: '+(err?.message||'เกิดข้อผิดพลาด'),true);}
+    finally {btn.disabled=false;}
+  });
+  $('loadRoster').addEventListener('click',async()=>{
+    const button=$('loadRoster');
+    const classroom=$('classroomCode').value.trim().toUpperCase();
+    const status=$('rosterStatus');
+    const list=$('rosterList');
+    studentRequestSequence++;list.replaceChildren();$('rosterCount').textContent='';$('studentReview').hidden=true;$('studentSubmissions').replaceChildren();$('studentScores').replaceChildren();
+    if(!/^CL[A-Z0-9_-]{1,37}$/.test(classroom)){status.textContent='กรุณากรอกรหัสห้องเรียน เช่น CL001';status.className='status error';return;}
+    button.disabled=true;status.textContent='กำลังตรวจสอบสิทธิ์และโหลดรายชื่อ...';status.className='status';
+    try{
+      const {data:{session},error:sessionError}=await supabase.auth.getSession();
+      if(sessionError||!session?.access_token)throw new Error('เซสชันครูหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+      const response=await fetch(REVIEW_ENDPOINT,{
+        method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({action:'teacher-students',classroom_code:classroom})
+      });
+      const result=await response.json();
+      if(!response.ok||!result?.ok)throw new Error((result?.error||'HTTP '+response.status));
+      if(!Array.isArray(result.students))throw new Error('รูปแบบรายชื่อนักเรียนไม่ถูกต้อง');
+      $('rosterCount').textContent=(result.classroom_name||classroom)+' — '+result.students.length+' คน';
+      for(const student of result.students){
+        const card=document.createElement('button');card.type='button';card.className='student-card';card.setAttribute('aria-pressed','false');card.addEventListener('click',()=>loadStudentReview(classroom,student,card));
+        const name=document.createElement('strong');name.textContent=student.name||'(ยังไม่มีชื่อ)';
+        const detail=document.createElement('span');detail.className='muted';detail.textContent=(student.student_code||'')+(student.level?' • '+student.level:'');
+        card.append(name,detail);list.append(card);
+      }
+      status.textContent='✅ โหลดรายชื่อจาก Supabase สำเร็จ';status.className='status success';
+      if(!result.students.length){const p=document.createElement('p');p.className='muted';p.textContent='ห้องนี้ยังไม่มีนักเรียนในทะเบียนที่เผยแพร่';list.append(p);}
+    }catch(err){status.textContent='❌ '+(err?.message||'โหลดรายชื่อไม่สำเร็จ');status.className='status error';}
+    finally{button.disabled=false;}
+  });
+  let studentRequestSequence=0;
+  function formatScoreDate(value) {
+    if (!value) return 'ไม่ระบุ';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? 'ไม่ระบุ' : d.toLocaleString('th-TH');
+  }
+  let selectedAttemptId = null;
+  let cachedSubmissions = [];
+  let cachedScores = [];
+  async function loadStudentScores(classroom, student, requestId) {
+    const status = $('studentScoresStatus'), container = $('studentScores');
+    status.textContent = 'กำลังโหลดประวัติคะแนน...';
+    status.className = 'status';
+    container.replaceChildren();
+    try {
+      const {data:{session},error} = await supabase.auth.getSession();
+      if (error || !session?.access_token) throw new Error('เซสชันครูหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+      const response = await fetch(REVIEW_ENDPOINT, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({action:'teacher-scores',classroom_code:classroom,student_code:student.student_code,limit:100})
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.ok) throw new Error(result?.error || 'HTTP '+response.status);
+      if (!Array.isArray(result.scores)) throw new Error('รูปแบบประวัติคะแนนไม่ถูกต้อง');
+      if (requestId !== studentRequestSequence) return;
+      const scores = result.scores;
+       cachedScores = scores;
+      if (!scores.length) {
+        status.textContent = 'ยังไม่มีประวัติคะแนนใน Classroom จริงสำหรับนักเรียนคนนี้';
+        return;
+      }
+      status.textContent = 'โหลดคะแนนสำเร็จ '+scores.length+' รอบ'+(scores.length===100?' • อาจมีรอบเก่ากว่านี้ที่ยังไม่แสดง':'');
+      status.className = 'status success';
+      const summary = document.createElement('div');
+      summary.className = 'score-summary';
+      const valid = scores.filter(s => Number.isFinite(Number(s.score_percent)));
+      const average = valid.length ? (valid.reduce((sum,s)=>sum+Number(s.score_percent),0)/valid.length).toFixed(1)+'%' : '—';
+      for (const [label,value] of [['รอบที่แสดง',scores.length],['คะแนนเฉลี่ย',average],['เกมที่เล่น',new Set(scores.map(s=>s.game_id)).size]]) {
+        const stat=document.createElement('div');stat.className='score-stat';
+        const strong=document.createElement('strong');strong.textContent=String(value);
+        const small=document.createElement('span');small.textContent=label;
+        stat.append(strong,small);summary.append(stat);
+      }
+      container.append(summary);
+      const wrap=document.createElement('div');wrap.className='score-table-wrap';
+      const table=document.createElement('table');table.className='score-table';
+      const head=document.createElement('thead'), headRow=document.createElement('tr');
+      for(const name of ['เลือก','วันเวลา','เกม','คะแนน','ร้อยละ','สถานะ']) {
+        const th=document.createElement('th');th.textContent=name;headRow.append(th);
+      }
+      head.append(headRow);table.append(head);
+      const tbody=document.createElement('tbody');
+      for(const s of scores) {
+        const tr=document.createElement('tr');
+        const values=[
+          formatScoreDate(s.submitted_at || s.started_at),
+          s.game_id || 'ไม่ระบุเกม',
+          String(s.correct_count ?? '—')+' / '+String(s.total_questions ?? '—'),
+          s.score_percent == null ? '—' : Number(s.score_percent).toFixed(1)+'%',
+          s.status || 'ไม่ระบุ'
+        ];
+        values.forEach((value,i)=>{
+          const td=document.createElement('td');td.textContent=value;
+          if(i===2)td.className='score-game';
+          if(i===0){const btn=document.createElement('button');btn.type='button';btn.textContent='🔎 เลือกรอบ';btn.style.cssText='width:auto;margin:0;padding:8px 12px;font-size:13px';btn.addEventListener('click',()=>selectAttempt(s));td.replaceChildren(btn);}
+          tr.append(td);
+        });
+        tbody.append(tr);
+      }
+      table.append(tbody);wrap.append(table);container.append(wrap);
+    } catch(err) {
+      if(requestId !== studentRequestSequence)return;
+      status.textContent='❌ อ่านคะแนนไม่สำเร็จ: '+(err?.message||'เกิดข้อผิดพลาด');
+      status.className='status error';
+    }
+  }
+  async function loadStudentReview(classroom,student,clickedCard){
+    const requestId=++studentRequestSequence;
+    const panel=$('studentReview'),status=$('studentReviewStatus'),items=$('studentSubmissions');
+    panel.hidden=false;items.replaceChildren();$('studentScores').replaceChildren();selectedAttemptId=null;cachedSubmissions=[];cachedScores=[];$('selectedAttemptStatus').textContent='เลือกรอบการเล่นจากตารางคะแนนเพื่อดูรอยทด';loadStudentScores(classroom,student,requestId);
+    $('studentReviewTitle').textContent='✍️ ผลงานของ '+(student.name||student.student_code)+' ('+student.student_code+')';
+    document.querySelectorAll('#rosterList .student-card').forEach(el=>el.setAttribute('aria-pressed',String(el===clickedCard)));
+    status.textContent='กำลังอ่านรอยทด...';status.className='status';
+    panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+    try{
+      const {data:{session},error:sessionError}=await supabase.auth.getSession();
+      if(sessionError||!session?.access_token)throw new Error('เซสชันครูหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+      const response=await fetch(REVIEW_ENDPOINT,{
+        method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({action:'teacher-list',classroom_code:classroom,student_code:student.student_code})
+      });
+      const result=await response.json();
+      if(!response.ok||!result?.ok)throw new Error(result?.error||'HTTP '+response.status);
+      if(!Array.isArray(result.submissions))throw new Error('ข้อมูลรอยทดไม่ถูกต้อง');
+      if(requestId!==studentRequestSequence)return;
+      cachedSubmissions=result.submissions;
+      status.textContent='โหลดรอยทด '+cachedSubmissions.length+' รายการแล้ว • เลือกรอบคะแนนด้านบนเพื่อดูเฉพาะรอบนั้น';status.className='status success';
+      if(selectedAttemptId)renderAttemptInk();
+    }catch(err){if(requestId!==studentRequestSequence)return;status.textContent='❌ '+(err?.message||'อ่านผลงานไม่สำเร็จ');status.className='status error';}
+  }
+  function selectAttempt(score){
+    selectedAttemptId=String(score.attempt_id||'');
+    $('selectedAttemptStatus').textContent='รอบที่เลือก: '+formatScoreDate(score.submitted_at||score.started_at)+' • '+(score.game_id||'')+' • '+score.correct_count+'/'+score.total_questions+' • Attempt '+selectedAttemptId;
+    renderAttemptInk();
+    $('studentReviewStatus').scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  function renderAttemptInk(){
+    const items=$('studentSubmissions'),status=$('studentReviewStatus');items.replaceChildren();
+    if(!selectedAttemptId){status.textContent='กรุณาเลือกรอบคะแนนก่อน';return;}
+    const matching=cachedSubmissions.filter(x=>String(x.attempt_id||'')===selectedAttemptId).sort((a,b)=>Number(a.question_number)-Number(b.question_number));
+    status.textContent=matching.length?'รอยทดของรอบนี้ '+matching.length+' ข้อ':'ไม่พบรอยทดของรอบนี้ในข้อมูลที่ API ส่งมา (อาจไม่มีการเขียน หรือเกิน 200 รายการล่าสุด)';
+    for(const item of matching){
+        const details=document.createElement('details');details.className='submission-card';
+        const summary=document.createElement('summary');
+        summary.textContent='ข้อ '+(item.question_number??'?')+' • '+(item.game_id||'ไม่ระบุเกม')+' • '+(item.submitted_at?new Date(item.submitted_at).toLocaleString('th-TH'):'ไม่ระบุวัน');
+        const meta=document.createElement('p');meta.className='muted';meta.textContent='Attempt: '+(item.attempt_id||'ไม่ระบุ')+' • Question ID: '+(item.question_id||'ไม่ระบุ');
+        const drawing=document.createElement('div');
+        drawing.style.cssText='margin:12px 0;padding:12px;background:#f8fbff;border:1px solid #d9e5f3;border-radius:14px';
+        const answer=document.createElement('p');answer.className='muted';
+        const answerData=item.answer_data;
+        answer.textContent='คำตอบ: '+(answerData && typeof answerData==='object' && answerData.value!=null ? String(answerData.value) : 'ไม่ระบุ')+' • '+(answerData?.ok===true?'✓ ถูก':answerData?.ok===false?'✕ ผิด':'ไม่ระบุผล');
+        drawing.append(answer);
+        const strokes=Array.isArray(item.ink_data)?item.ink_data:[];
+        const valid=strokes.filter(st=>st && Array.isArray(st.pts) && st.pts.some(pt=>Number.isFinite(Number(pt?.x))&&Number.isFinite(Number(pt?.y))));
+        if(valid.length){
+          const canvas=document.createElement('canvas');canvas.width=900;canvas.height=450;
+          canvas.style.cssText='display:block;width:100%;height:auto;background:white;border:1px solid #d7e1ed;border-radius:10px;touch-action:auto';
+          canvas.setAttribute('role','img');canvas.setAttribute('aria-label','ภาพรอยทดข้อ '+(item.question_number??'?'));
+          const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+          for(const stroke of valid){
+            const points=stroke.pts.filter(pt=>Number.isFinite(Number(pt?.x))&&Number.isFinite(Number(pt?.y)));
+            if(!points.length)continue;
+            ctx.save();ctx.globalCompositeOperation=stroke.erase?'destination-out':'source-over';
+            ctx.strokeStyle=typeof stroke.color==='string' && /^(#[0-9a-fA-F]{3,8}|black|red|blue)$/.test(stroke.color)?stroke.color:'#172b4d';
+            ctx.fillStyle=ctx.strokeStyle;ctx.lineWidth=stroke.erase?22:3.4;ctx.lineCap='round';ctx.lineJoin='round';
+            ctx.beginPath();
+            points.forEach((pt,i)=>{const x=Math.max(0,Math.min(1,Number(pt.x)))*canvas.width;const y=Math.max(0,Math.min(1,Number(pt.y)))*canvas.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+            if(points.length===1){const pt=points[0];ctx.arc(Number(pt.x)*canvas.width,Number(pt.y)*canvas.height,2,0,Math.PI*2);ctx.fill()}else ctx.stroke();
+            ctx.restore();
+          }
+          drawing.append(canvas);
+          const note=document.createElement('p');note.className='muted';note.textContent='แสดงรอยทด '+valid.length+' เส้น • ภาพตัวอย่างจากพิกัดที่บันทึก';drawing.append(note);
+        }else{
+          const empty=document.createElement('p');empty.className='muted';empty.textContent='ไม่มีเส้นปากกาสำหรับข้อนี้';drawing.append(empty);
+        }
+        const raw=document.createElement('details');const rawTitle=document.createElement('summary');rawTitle.textContent='ดูข้อมูลต้นฉบับ (JSON)';
+        const pre=document.createElement('pre');pre.textContent=JSON.stringify({answer_data:item.answer_data,ink_data:item.ink_data},null,2);
+        raw.append(rawTitle,pre);details.append(summary,meta,drawing,raw);items.append(details);
+      }
+  }
+  $('signOut').addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error)showStatus(error.message,true);else{showStatus('ออกจากระบบแล้ว');await render();}});
+  supabase.auth.onAuthStateChange(()=>{setTimeout(render,0);});
+  if(location.protocol==='file:')showStatus('กรุณาเปิดจาก URL GitHub Pages ของ Teacher Portal เพื่อทดสอบ Magic Link (ไม่ใช่ไฟล์ใน Downloads)',true);
+  render();
+}
+</script></body></html>
